@@ -1,5 +1,5 @@
 # Simple_Chatroom
-A simple ChatRoom name Wazzap!
+Please share your idea to discuss about the project below your name.
 
 # Bijan
 
