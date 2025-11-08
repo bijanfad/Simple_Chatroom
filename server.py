@@ -53,13 +53,25 @@ try:
         for notified_socket in read_sockets:
             # New connection
             if notified_socket == server_socket:
+            #     This part works without username 
+            #     client_socket, client_address = server_socket.accept()
+            #     sockets_list.append(client_socket)
+            #     clients[client_socket] = client_address
+              
+                #This part used nikname
                 client_socket, client_address = server_socket.accept()
                 sockets_list.append(client_socket)
-                clients[client_socket] = client_address
-
-                join_msg = f"[Server] {client_address[0]}:{client_address[1]} joined the chat.\n"
+                # First message from new client will be their nickname
+                nickname = client_socket.recv(1024).decode().strip()
+                clients[client_socket] = nickname
+                join_msg = f"[Server] {nickname} joined the chat.\n"
                 print(join_msg.strip())
                 broadcast(join_msg.encode(), server_socket, sockets_list, clients)
+
+
+                #join_msg = f"[Server] {client_address[0]}:{client_address[1]} joined the chat.\n"
+                #print(join_msg.strip())
+                #broadcast(join_msg.encode(), server_socket, sockets_list, clients)
 
             # Existing client sent a message
             else:
@@ -70,8 +82,10 @@ try:
 
                 # Empty message = client disconnected
                 if not message:
-                    addr = clients.get(notified_socket, ("unknown", 0))
-                    leave_msg = f"[Server] {addr[0]}:{addr[1]} left the chat.\n"
+                    # addr = clients.get(notified_socket, ("unknown", 0))
+                    # leave_msg = f"[Server] {addr[0]}:{addr[1]} left the chat.\n"
+                    nickname = clients.get(notified_socket, "Unknown")
+                    leave_msg = f"[Server] {nickname} left the chat.\n"
                     print(leave_msg.strip())
 
                     if notified_socket in sockets_list:
@@ -82,13 +96,19 @@ try:
 
                     broadcast(leave_msg.encode(), server_socket, sockets_list, clients)
                     continue
+                else:    
+                    # Normal message: broadcast to everyone else
+                    # addr = clients.get(notified_socket, ("unknown", 0))
+                    # text = message.decode(errors="ignore").rstrip()
+                    # formatted = f"[{addr[0]}:{addr[1]}] {text}\n"
+                    # print(formatted, end="")  # also show on server
+                    # broadcast(formatted.encode(), notified_socket, sockets_list, clients)
 
-                # Normal message: broadcast to everyone else
-                addr = clients.get(notified_socket, ("unknown", 0))
-                text = message.decode(errors="ignore").rstrip()
-                formatted = f"[{addr[0]}:{addr[1]}] {text}\n"
-                print(formatted, end="")  # also show on server
-                broadcast(formatted.encode(), notified_socket, sockets_list, clients)
+                    nickname = clients.get(notified_socket, "Unknown")
+                    text = message.decode(errors="ignore").rstrip()
+                    formatted = f"[{nickname}] {text}\n"
+                    print(formatted, end="")
+                    broadcast(formatted.encode(), notified_socket, sockets_list, clients)
 
         # Handle sockets with errors
         for notified_socket in exception_sockets:

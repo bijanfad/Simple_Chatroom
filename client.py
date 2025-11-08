@@ -14,6 +14,8 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 try:
     client_socket.connect((HOST, PORT))
+    nickname = input("Enter your nickname: ")
+    client_socket.send(nickname.encode())
 except Exception as e:
     print(f"Could not connect to {HOST}:{PORT} -> {e}")
     sys.exit(1)
