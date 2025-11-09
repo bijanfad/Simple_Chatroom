@@ -1,6 +1,8 @@
 import socket
 import select
 import sys
+from colorama import Fore, Style, init
+init()
 
 if len(sys.argv) != 3:
     print(f"Usage: python {sys.argv[0]} <host> <port>")

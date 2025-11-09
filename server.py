@@ -1,6 +1,13 @@
 import socket
 import select
 import sys
+from colorama import Fore, Style, init
+import random
+init()
+nick_to_socket = {}
+
+colors = [Fore.GREEN, Fore.MAGENTA, Fore.YELLOW, Fore.BLUE, Fore.WHITE]
+client_colors = {}
 
 
 def broadcast(message, sender_socket, sockets_list, clients):
@@ -64,7 +71,9 @@ try:
                 # First message from new client will be their nickname
                 nickname = client_socket.recv(1024).decode().strip()
                 clients[client_socket] = nickname
-                join_msg = f"[Server] {nickname} joined the chat.\n"
+                nick_to_socket[nickname] = client_socket
+                client_colors[client_socket] = random.choice(colors)
+                join_msg = f"{Fore.CYAN}[Server]{Style.RESET_ALL} {nickname} joined the chat.\n"
                 print(join_msg.strip())
                 broadcast(join_msg.encode(), server_socket, sockets_list, clients)
 
@@ -85,13 +94,15 @@ try:
                     # addr = clients.get(notified_socket, ("unknown", 0))
                     # leave_msg = f"[Server] {addr[0]}:{addr[1]} left the chat.\n"
                     nickname = clients.get(notified_socket, "Unknown")
-                    leave_msg = f"[Server] {nickname} left the chat.\n"
+                    leave_msg = f"{Fore.CYAN}[Server]{Style.RESET_ALL} {nickname} left the chat.\n"
                     print(leave_msg.strip())
 
                     if notified_socket in sockets_list:
                         sockets_list.remove(notified_socket)
                     if notified_socket in clients:
                         del clients[notified_socket]
+                    if nickname in nick_to_socket:
+                        del nick_to_socket[nickname]
                     notified_socket.close()
 
                     broadcast(leave_msg.encode(), server_socket, sockets_list, clients)
@@ -106,9 +117,32 @@ try:
 
                     nickname = clients.get(notified_socket, "Unknown")
                     text = message.decode(errors="ignore").rstrip()
-                    formatted = f"[{nickname}] {text}\n"
-                    print(formatted, end="")
-                    broadcast(formatted.encode(), notified_socket, sockets_list, clients)
+                    if text.startswith("@"):
+                        parts = text.split(" ", 1)
+                        if len(parts) < 2:
+                            # No message text, ignore or notify sender
+                            notified_socket.send("[Server] Usage for private message: @nickname your message\n".encode())
+                        else:
+                            target_name = parts[0][1:]  # remove '@'
+                            private_text = parts[1]
+                            target_socket = nick_to_socket.get(target_name)
+                            if target_socket:
+                                # Message to receiver
+                                msg_to_target = f"[whisper from {nickname}] {private_text}\n"
+                                target_socket.send(msg_to_target.encode())
+
+                                # Confirmation to sender
+                                msg_to_sender = f"[whisper to {target_name}] {private_text}\n"
+                                notified_socket.send(msg_to_sender.encode())
+                            else:
+                                # Target not found
+                                error_msg = f"[Server] User '{target_name}' not found.\n"
+                                notified_socket.send(error_msg.encode())
+                    else:
+                        # Normal public message
+                        formatted = f"[{nickname}] {text}\n"
+                        print(formatted, end="")
+                        broadcast(formatted.encode(), notified_socket, sockets_list, clients)
 
         # Handle sockets with errors
         for notified_socket in exception_sockets:
