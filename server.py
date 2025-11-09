@@ -15,12 +15,10 @@ def broadcast(message, sender_socket, sockets_list, clients):
     Send a message to all connected clients except the sender.
     """
     for sock in sockets_list:
-        # Skip the server socket itself and the sender
         if sock != sender_socket and sock != server_socket:
             try:
                 sock.send(message)
             except:
-                # If sending fails, close and remove that socket
                 sock.close()
                 if sock in sockets_list:
                     sockets_list.remove(sock)
@@ -33,14 +31,8 @@ if len(sys.argv) != 2:
     sys.exit(1)
 
 PORT = int(sys.argv[1])
-
-# Create TCP/IP socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-# Allow address reuse so you can restart the server quickly
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-# Bind and listen
 server_socket.bind(("0.0.0.0", PORT))
 server_socket.listen()
 
@@ -60,15 +52,8 @@ try:
         for notified_socket in read_sockets:
             # New connection
             if notified_socket == server_socket:
-            #     This part works without username 
-            #     client_socket, client_address = server_socket.accept()
-            #     sockets_list.append(client_socket)
-            #     clients[client_socket] = client_address
-              
-                #This part used nikname
                 client_socket, client_address = server_socket.accept()
                 sockets_list.append(client_socket)
-                # First message from new client will be their nickname
                 nickname = client_socket.recv(1024).decode().strip()
                 clients[client_socket] = nickname
                 nick_to_socket[nickname] = client_socket
@@ -77,22 +62,13 @@ try:
                 print(join_msg.strip())
                 broadcast(join_msg.encode(), server_socket, sockets_list, clients)
 
-
-                #join_msg = f"[Server] {client_address[0]}:{client_address[1]} joined the chat.\n"
-                #print(join_msg.strip())
-                #broadcast(join_msg.encode(), server_socket, sockets_list, clients)
-
-            # Existing client sent a message
             else:
                 try:
                     message = notified_socket.recv(1024)
                 except:
                     message = b""
 
-                # Empty message = client disconnected
                 if not message:
-                    # addr = clients.get(notified_socket, ("unknown", 0))
-                    # leave_msg = f"[Server] {addr[0]}:{addr[1]} left the chat.\n"
                     nickname = clients.get(notified_socket, "Unknown")
                     leave_msg = f"{Fore.CYAN}[Server]{Style.RESET_ALL} {nickname} left the chat.\n"
                     print(leave_msg.strip())
@@ -107,31 +83,20 @@ try:
 
                     broadcast(leave_msg.encode(), server_socket, sockets_list, clients)
                     continue
-                else:    
-                    # Normal message: broadcast to everyone else
-                    # addr = clients.get(notified_socket, ("unknown", 0))
-                    # text = message.decode(errors="ignore").rstrip()
-                    # formatted = f"[{addr[0]}:{addr[1]}] {text}\n"
-                    # print(formatted, end="")  # also show on server
-                    # broadcast(formatted.encode(), notified_socket, sockets_list, clients)
-
+                else:   
                     nickname = clients.get(notified_socket, "Unknown")
                     text = message.decode(errors="ignore").rstrip()
                     if text.startswith("@"):
                         parts = text.split(" ", 1)
                         if len(parts) < 2:
-                            # No message text, ignore or notify sender
                             notified_socket.send("[Server] Usage for private message: @nickname your message\n".encode())
                         else:
                             target_name = parts[0][1:]  # remove '@'
                             private_text = parts[1]
                             target_socket = nick_to_socket.get(target_name)
                             if target_socket:
-                                # Message to receiver
                                 msg_to_target = f"[whisper from {nickname}] {private_text}\n"
                                 target_socket.send(msg_to_target.encode())
-
-                                # Confirmation to sender
                                 msg_to_sender = f"[whisper to {target_name}] {private_text}\n"
                                 notified_socket.send(msg_to_sender.encode())
                             else:
